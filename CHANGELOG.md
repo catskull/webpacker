@@ -1,5 +1,59 @@
-## [2.0] - 2017-05-24
+## Unreleased
 
+### Added
+
+- `resolved_paths` option to allow adding additional paths webpack should lookup when resolving modules
+
+```yml
+  # config/webpacker.yml
+  # Additional paths webpack should lookup modules
+  resolved_paths: [] # empty by default
+```
+
+### Fixed
+
+- Update `webpack-dev-server.tt` to respect RAILS_ENV and NODE_ENV values [#502](https://github.com/rails/webpacker/issues/502)
+- Use `0.0.0.0` as default listen address for `webpack-dev-server`
+- Serve assets using `localhost` from dev server - [#424](https://github.com/rails/webpacker/issues/424)
+
+```yml
+  dev_server:
+    host: localhost
+```
+
+- On Windows, `ruby bin/webpacker` and `ruby bin/webpacker-dev-server` will now bypass yarn, and execute via `node_modules/.bin` directly - [#584](https://github.com/rails/webpacker/pull/584)
+
+### Breaking changes
+
+- Add `compile` option to `config/webpacker.yml` for configuring lazy compilation of packs when a file under tracked paths is changed [#503](https://github.com/rails/webpacker/pull/503). To enable expected behavior, update `config/webpacker.yml`:
+
+  ```yaml
+    default: &default
+      compile: false
+
+    test:
+      compile: true
+
+    development:
+      compile: true
+  ```
+
+- Make test compilation cacheable and configurable so that the lazy compilation
+only triggers if files are changed under tracked paths.
+Following paths are watched by default -
+
+  ```rb
+    ["app/javascript/**/*", "yarn.lock", "package.json", "config/webpack/**/*"]
+  ```
+
+  To add more paths:
+
+  ```rb
+  # config/initializers/webpacker.rb or config/application.rb
+  Webpacker::Compiler.watched_paths << 'bower_components'
+  ```
+
+## [2.0] - 2017-05-24
 
 ### Fixed
 - Update `.babelrc` to fix compilation issues - [#306](https://github.com/rails/webpacker/issues/306)
@@ -74,6 +128,12 @@
   rm config/webpack/development.server.js
   ```
 
+  __Warning__: For now you also have to add a pattern in `.gitignore` by hand.
+  ```diff
+   /public/packs
+  +/public/packs-test
+   /node_modules
+   ```
 
 ## [1.2] - 2017-04-27
 Some of the changes made requires you to run below commands to install new changes.

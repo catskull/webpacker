@@ -24,6 +24,7 @@ in which case you may not even need the asset pipeline. This is mostly relevant 
   - [React](#react)
   - [Angular with TypeScript](#angular-with-typescript)
   - [Vue](#vue)
+    - [Using Rails helpers in .vue files](#using-rails-helpers-in-vue-files)
   - [Elm](#elm)
 - [Binstubs](#binstubs)
   - [Webpack dev server](#webpack-dev-server)
@@ -32,6 +33,7 @@ in which case you may not even need the asset pipeline. This is mostly relevant 
   - [Webpack](#webpack-1)
   - [Loaders](#loaders)
   - [Paths](#paths)
+    - [Resolved Paths](#resolved-paths)
   - [Babel](#babel)
   - [Post-Processing CSS](#post-processing-css)
   - [CDN](#cdn)
@@ -59,11 +61,20 @@ in which case you may not even need the asset pipeline. This is mostly relevant 
   - [Link sprocket assets](#link-sprocket-assets)
     - [Using helpers](#using-helpers)
     - [Using babel module resolver](#using-babel-module-resolver)
+  - [Environment variables](#environment-variables)
 - [Extending](#extending)
 - [Deployment](#deployment)
   - [Heroku](#heroku)
 - [Testing](#testing)
+  - [Lazy compilation](#lazy-compilation)
+    - [Caching](#caching)
 - [Troubleshooting](#troubleshooting)
+    - [ENOENT: no such file or directory - node-sass](#enoent-no-such-file-or-directory---node-sass)
+    - [Can't find hello_react.js in manifest.json](#cant-find-hello_reactjs-in-manifestjson)
+    - [Error: listen EADDRINUSE 0.0.0.0:8080](#error-listen-eaddrinuse-00008080)
+    - [throw er; // Unhandled 'error' event](#throw-er--unhandled-error-event)
+    - [webpack or webpack-dev-server not found](#webpack-or-webpack-dev-server-not-found)
+    - [Running Webpack on Windows](#running-webpack-on-windows)
 - [Wishlist](#wishlist)
 - [License](#license)
 
@@ -189,6 +200,20 @@ any changes to the configuration files. An example component will
 also be added to your project in `app/javascript` so that you can
 experiment Vue right away.
 
+#### Using Rails helpers in .vue files
+
+Rails helpers cannot be used in `.vue` files by default. To enable them, change
+the extension to `.vue.erb` and additionally amend the `test` in
+`config/webpack/loaders/vue.js` to also include `.vue.erb` files:
+
+```js
+# config/webpack/loaders/vue.js
+
+module.exports = {
+  test: /\.vue(\.erb)?$/,
+  ...
+}
+```
 
 ### Elm
 
@@ -223,7 +248,7 @@ as you make changes.
 
 `./bin/webpack-dev-server` launches the [Webpack Dev Server](https://webpack.js.org/configuration/dev-server/), which serves your pack files
 on `http://localhost:8080/` by default and supports live code reloading in the development environment. You will need to install additional plugins for Webpack if you want
-features like [Hot Module Replacement](https://webpack.js.org/guides/hmr-react/).
+features like [Hot Module Replacement](https://webpack.js.org/guides/hot-module-replacement/).
 
 If you'd rather not have to run the two processes separately by hand, you can use [Foreman](https://ddollar.github.io/foreman):
 
@@ -241,25 +266,34 @@ webpacker: ./bin/webpack-dev-server
 foreman start
 ```
 
+By default, `webpack-dev-server` listens on `0.0.0.0` that means listening
+on all IP addresses available on your system: LAN IP address, localhost, 127.0.0.1 etc. However, we use `localhost` as default hostname for serving assets in browser
+and if you want to change that, for example on cloud9 you can do so
+by changing host set in `config/webpacker.yml`.
+
+```bash
+dev_server:
+  host: example.com
+```
+
 You can also pass CLI options supported by [webpack-dev-server](https://webpack.js.org/configuration/dev-server/). Please note that inline options will always take
 precedence over the ones already set in the configuration file.
 
 ```bash
-./bin/webpack-dev-server --host 0.0.0.0 --inline true --hot false
+./bin/webpack-dev-server --host example.com --inline true --hot false
 ```
-
 
 ### Webpack
 
-We recommend using `webpack-dev-server` during development for a better experience,
-however, if you don't want that for some reason you can always use `webpack` binstub with
+We recommend using `webpack-dev-server` during development for a better experience.
+However, if you don't want that for some reason you can always use `webpack` binstub with
 watch option, which uses webpack Command Line Interface (CLI). This will use `public_output_path` from `config/webpacker.yml`
 directory to serve your packs using configured rails server.
 
 You can pass cli options available with [Webpack](https://webpack.js.org/api/cli/):
 
 ```bash
-./bin/webpack --watch --progress --colours
+./bin/webpack --watch --progress --colors
 ```
 
 
@@ -275,8 +309,8 @@ points in `config/webpack/*.js`.
 ![screen shot 2017-05-23 at 19 56 18](https://cloud.githubusercontent.com/assets/771039/26371229/0983add2-3ff2-11e7-9dc3-d9c2c1094032.png)
 
 By default, you shouldn't have to make any changes to `config/webpack/*.js`
-files since it's all standard production-ready configuration however
-if you do need to customize or add a new loader this is where you would go.
+files since it's all standard production-ready configuration. However,
+if you do need to customize or add a new loader, this is where you would go.
 
 
 ### Loaders
@@ -300,7 +334,7 @@ module.exports = {
 }
 ```
 
-Now if you `import()` any `.json` files inside your javascript
+Finally add `.json` to the list of extensions in `config/webpacker.yml`. Now if you `import()` any `.json` files inside your javascript
 they will be processed using `json-loader`. Voila!
 
 
@@ -336,6 +370,30 @@ development:
     https: false
 ```
 
+#### Resolved Paths
+
+If you are adding webpacker to an existing app that has most of the assets inside
+`app/assets` or inside an engine and you want to share that
+with webpack modules then you can use `resolved_paths`
+option available in `config/webpacker.yml`, which lets you
+add additional paths webpack should lookup when resolving modules:
+
+```yml
+resolved_paths: ['app/assets']
+```
+
+You can then import them inside your modules like so:
+
+```js
+// Note it's relative to parent directory i.e. app/assets
+import 'stylesheets/main'
+import 'images/rails.png'
+```
+
+**Note:** Please be careful when adding paths here otherwise it
+will make the compilation slow, consider adding specific paths instead of
+whole parent directory if you just need to reference one or two modules
+
 
 ### Babel
 
@@ -366,7 +424,7 @@ file in your app root with standard plugins.
 ```yml
 plugins:
   postcss-smart-import: {}
-  cssnext: {}
+  postcss-cssnext: {}
 ```
 
 
@@ -420,7 +478,7 @@ compiled automatically.
 
 import React from 'react'
 import helloIcon from '../hello_react/images/icon.png'
-import '../hello_react/styles/hello-react.sass'
+import '../hello_react/styles/hello-react'
 
 const Hello = props => (
   <div className="hello-react">
@@ -464,8 +522,8 @@ Please note that your styles will always be extracted into `[pack_name].css`:
 // app/javascript/app-styles.sass
 // ~ to tell webpack that this is not a relative import:
 
-@import '~@material/animation/mdc-animation.scss'
-@import '~boostrap/dist/bootstrap.css'
+@import '~@material/animation/mdc-animation'
+@import '~bootstrap/dist/css/bootstrap'
 ```
 
 ```js
@@ -589,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
   data: {
     message: "Hello!",
     name: "David"
-} do %>
+  }.to_json do %>
 <% end %>
 ```
 
@@ -598,20 +656,15 @@ document.addEventListener('DOMContentLoaded', () => {
 ```
 
 ```js
-// Render component with data
+// Render component with props
 
 document.addEventListener('DOMContentLoaded', () => {
   const node = document.getElementById('hello-vue')
-  const data = JSON.parse(node.getAttribute('data'))
+  const props = JSON.parse(node.getAttribute('data'))
 
-  const app = new Vue({
-    data: data,
-    el: '#vue-app',
-    template: '<App/>',
-    components: { App }
-  })
-
-  console.log(app)
+  new Vue({
+    render: h => h(App, { props })
+  }).$mount('#hello-vue');
 })
 ```
 
@@ -720,8 +773,8 @@ yarn add bootstrap
 Import Bootstrap and theme(optional) CSS in your app/javascript/packs/app.js file:
 
 ```js
-import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap/dist/css/bootstrap-theme.css'
+import 'bootstrap/dist/css/bootstrap'
+import 'bootstrap/dist/css/bootstrap-theme'
 ```
 
 Or in your app/javascript/app.sass file:
@@ -729,8 +782,8 @@ Or in your app/javascript/app.sass file:
 ```sass
 // ~ to tell that this is not a relative import
 
-@import '~bootstrap/dist/css/bootstrap.css'
-@import '~bootstrap/dist/css/bootstrap-theme.css'
+@import '~bootstrap/dist/css/bootstrap'
+@import '~bootstrap/dist/css/bootstrap-theme'
 ```
 
 
@@ -881,7 +934,7 @@ That's all. Now, you can use CSS modules within your JS app:
 
 ```js
 import React from 'react'
-import styles from './styles.css'
+import styles from './styles'
 
 const Hello = props => (
   <div className={styles.wrapper}>
@@ -897,7 +950,7 @@ const Hello = props => (
 ### CSS-Next
 
 [css-next](http://cssnext.io/) is supported out-of-box in Webpacker allowing the use of
-latest css features, today.
+latest CSS features, today.
 
 
 ### Ignoring swap files
@@ -905,7 +958,7 @@ latest css features, today.
 If you are using vim or emacs and want to ignore certain files you can add `ignore-loader`:
 
 ```
-yard add ignore-loader
+yarn add ignore-loader
 ```
 
 and create a new loader file inside `config/webpack/loaders`:
@@ -969,8 +1022,64 @@ And then within your javascript app code:
 // Note: we don't have do any ../../ jazz
 
 import FooImage from 'assets/images/foo-image.png'
-import 'assets/stylesheets/bar.sass'
+import 'assets/stylesheets/bar'
 ```
+
+### Environment variables
+
+Environment variables are supported out of the box in Webpacker. For example if
+you run the Webpack dev server like so:
+```
+FOO=hello BAR=world ./bin/webpack-dev-server
+```
+
+You can then reference these variables in your javascript app code with
+`process.env`:
+
+```js
+console.log(process.env.FOO) // Compiles to console.log("hello")
+```
+
+You may want to store configuration in environment variables via `.env` files,
+similar to the [dotenv Ruby gem](https://github.com/bkeepers/dotenv).
+
+In development, if you use Foreman or [Invoker](http://invoker.codemancers.com)
+to launch the Webpack server, both of these tools have basic support for a
+`.env` file (Invoker also supports `.env.local`), so no further configuration
+is needed.
+
+However, if you run the Webpack server without Foreman/Invoker, or if you
+want more control over what `.env` files to load, you can use the
+[dotenv npm package](https://github.com/motdotla/dotenv). Here is what you could
+do to support a "Ruby-like" dotenv:
+
+```
+yarn add dotenv
+```
+
+```javascript
+// config/webpack/shared.js
+
+...
+const dotenv = require('dotenv');
+
+const dotenvFiles = [
+  `.env.${process.env.NODE_ENV}.local`,
+  '.env.local',
+  `.env.${process.env.NODE_ENV}`,
+  '.env'
+];
+dotenvFiles.forEach((dotenvFile) => {
+  dotenv.config({ path: dotenvFile, silent: true });
+});
+
+module.exports = {
+  ...
+```
+
+**Warning:** using Foreman/Invoker and npm dotenv at the same time can result in
+confusing behavior, in that Foreman/Invoker variables take precedence over
+npm dotenv variables.
 
 ## Extending
 
@@ -1046,8 +1155,11 @@ git push heroku master
 
 ## Testing
 
+### Lazy compilation
+
 Webpacker lazily compiles assets in test env so you can write your tests without any extra
 setup and everything will just work out of the box.
+
 
 Here is a sample system test case with hello_react example component:
 
@@ -1087,16 +1199,38 @@ class HomesTest < ApplicationSystemTestCase
 end
 ```
 
+#### Caching
+
+By default, the lazy compilation is cached until a file is changed under
+tracked paths. You can configure the paths tracked
+by adding new paths to `watched_paths` array, much like rails `autoload_paths`:
+
+```rb
+# config/initializers/webpacker.rb
+# or config/application.rb
+Webpacker::Compiler.watched_paths << 'bower_components'
+```
+
+Compiler stores a timestamp under `tmp/webpacker/` directory to keep track of
+changes and you can configure that by overriding compiler `cache_dir`:
+
+```rb
+Webpacker::Compiler.cache_dir = "tmp/foo"
+```
 
 ## Troubleshooting
 
+##### ENOENT: no such file or directory - node-sass
+
 *  If you get this error `ENOENT: no such file or directory - node-sass` on Heroku
 or elsewhere during `assets:precompile` or `bundle exec rails webpacker:compile`
-then you would need to rebuild node-sass. It's a bit weird error,
+then you would need to rebuild node-sass. It's a bit of a weird error;
 basically, it can't find the `node-sass` binary.
 An easy solution is to create a postinstall hook - `npm rebuild node-sass` in
-`package.json` and that will ensure `node-sass` is rebuild whenever
+`package.json` and that will ensure `node-sass` is rebuilt whenever
 you install any new modules.
+
+##### Can't find hello_react.js in manifest.json
 
 * If you get this error `Can't find hello_react.js in manifest.json`
 when loading a view in the browser it's because Webpack is still compiling packs.
@@ -1107,6 +1241,43 @@ Therefore, make sure webpack
 (i.e `./bin/webpack-dev-server`) is running and has
 completed the compilation successfully before loading a view.
 
+##### Error: listen EADDRINUSE 0.0.0.0:8080
+
+* Do you have any process running on port 8080? Since only one process can occupy each port, you can change the port number of webpack-dev-server at `config/webpacker.yml` under dev_server's port. Alternatively, you can stop the process from occupying port 8080. To do so, simply find the process id (PID) using `lsof -i :8080` and kill the process with its PID using `kill -9 PID`.
+
+
+##### throw er; // Unhandled 'error' event
+
+* If you get this error while trying to use Elm, try rebuilding Elm. You can do
+  so with a postinstall hook in your `package.json`:
+
+```
+"scripts": {
+  "postinstall": "npm rebuild elm"
+}
+```
+
+##### webpack or webpack-dev-server not found
+
+* This could happen if  `webpacker:install` step is skipped. Please run `bundle exec rails webpacker:install` to fix the issue.
+
+* If you encounter the above error on heroku after upgrading from Rails 4.x to 5.1.x, then the problem might be related to missing `yarn` binstub. Please run following commands to update/add binstubs:
+
+```bash
+bundle config --delete bin
+./bin/rails app:update:bin # or rails app:update:bin
+```
+
+##### Running Webpack on Windows
+
+If you are running Webpack on Windows, your command shell may not be able to interpret the preferred interpreter
+for the scripts generated in `bin/webpack` and `bin/webpack-dev-server`. Instead you'll want to run the scripts
+manually with Ruby:
+
+```
+C:\path>ruby bin\webpack
+C:\path>ruby bin\webpack-dev-server
+```
 
 ## Wishlist
 

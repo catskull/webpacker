@@ -36,6 +36,10 @@ class Webpacker::Configuration < Webpacker::FileLoader
       fetch(:source_path)
     end
 
+    def compile?
+      fetch(:compile)
+    end
+
     def fetch(key)
       data.fetch(key, defaults[key])
     end
@@ -47,7 +51,7 @@ class Webpacker::Configuration < Webpacker::FileLoader
     end
 
     def defaults
-      @defaults ||= HashWithIndifferentAccess.new(YAML.load(default_file_path.read)["default"])
+      @defaults ||= HashWithIndifferentAccess.new(YAML.load(default_file_path.read)[Webpacker.env])
     end
   end
 

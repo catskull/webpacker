@@ -22,6 +22,7 @@ chmod "bin", 0755 & ~File.umask, verbose: false
 if File.exists?(".gitignore")
   append_to_file ".gitignore", <<-EOS
 /public/packs
+/public/packs-test
 /node_modules
 EOS
 end
@@ -32,7 +33,8 @@ run "yarn add webpack webpack-merge js-yaml path-complete-extname " \
 "babel-core babel-preset-env babel-polyfill compression-webpack-plugin rails-erb-loader glob " \
 "extract-text-webpack-plugin node-sass file-loader sass-loader css-loader style-loader " \
 "postcss-loader postcss-cssnext postcss-smart-import resolve-url-loader " \
-"babel-plugin-syntax-dynamic-import babel-plugin-transform-class-properties"
+"babel-plugin-syntax-dynamic-import babel-plugin-transform-class-properties " \
+"babel-plugin-transform-object-rest-spread"
 
 puts "Installing dev server for live reloading"
 run "yarn add --dev webpack-dev-server"
